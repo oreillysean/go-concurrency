@@ -4,66 +4,62 @@ This package provides a set of concurrent Go (Golang) functions that allow you t
 
 ## Functions
 
-### ForEachReturn
+The `concurrent` package provides a useful function called `ForEach` that allows you to process a slice of data concurrently using goroutines. The function respects the cancellation signal from the provided context, enabling safe and controlled concurrent processing.
 
-```go
-func ForEachReturn[T any, K any](data []T, action func(T) K) []K
+## `ForEach` Function Signature
+
+```golang
+func ForEach[T any](ctx context.Context, data []T, action func(context.Context, T) T)`
 ```
 
-This function takes a slice of data and applies the specified action function to each element concurrently. It creates a new slice containing the results of the action function applied to each element and returns it. The function ensures that all elements are processed concurrently, potentially improving the overall performance.
+## Usage
 
-Usage Example:
+The `ForEach` function takes three arguments:
 
-```go
+1.  `ctx context.Context`: The context used to control the execution of the goroutines. It allows for graceful cancellation if needed.
+2.  `data []T`: The input slice of data that you want to process concurrently. The `ForEach` function will process each element in this slice.
+3.  `action func(context.Context, T) T`: A function that takes the context and an element from the data slice as input, and returns the processed result.
+
+## How It Works
+
+1.  The `ForEach` function initializes a channel `c` to hold intermediate results. It creates a goroutine for each element in the data slice, which processes the item and sends the result with its index over the channel.
+
+2.  The `ForEach` function loops through the data slice, collecting the processed results from the channel and updating the data slice in place.
+
+3.  While processing each element concurrently, the function checks the cancellation status of the provided context before processing an item. If the context is canceled, the goroutine returns early without performing any processing on that specific item.
+
+4.  The function respects the cancellation signal and ensures that all running goroutines are allowed to finish before returning when the context is canceled.
+
+
+## Example
+
+Here's an example demonstrating how to use the `ForEach` function:
+
+```golang
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/oreillysean/go-concurrency"
+)
+
+func main() {
 data := []int{1, 2, 3, 4, 5}
-action := func(item int) int {
-    return item * 2
+
+	// A sample action that doubles the value of each element.
+	action := func(ctx context.Context, val int) int {
+		return val * 2
+	}
+
+	ctx := context.Background()
+	concurrent.ForEach(ctx, data, action)
+
+	fmt.Println(data) // Output: [2 4 6 8 10]
 }
-result := ForEachReturn(data, action)
-// 'result' will be a new slice containing [2, 4, 6, 8, 10]
 ```
 
-### ForEachInPlace
-
-```go
-func ForEachInPlace[T any](data []T, action func(T) T)
-```
-
-This function takes a slice of data and applies the specified action function to each element concurrently. However, it updates the original 'data' slice in place with the results of the action function. This function can be used when you want to modify the existing data slice directly.
-
-Usage Example:
-```go
-data := []string{"apple", "banana", "orange"}
-action := func(item string) string {
-    return strings.ToUpper(item)
-}
-ForEachInPlace(data, action)
-// The 'data' slice will be modified to contain ["APPLE", "BANANA", "ORANGE"]
-```
-
-### ForEachInPlaceWithContext
-
-```go
-func ForEachInPlaceWithContext[T any](ctx context.Context, data []T, action func(context.Context, T) T)
-```
-
-This function is similar to `ForEachInPlace`, but it respects the cancellation signal from the provided context. If the context is canceled while processing elements, the function stops the concurrent processing and returns immediately. This ensures that you can handle scenarios where you may want to cancel the processing prematurely.
-
-Usage Example:
-```go
-ctx, cancel := context.WithCancel(context.Background())
-defer cancel()
-
-data := []int{1, 2, 3, 4, 5}
-action := func(ctx context.Context, item int) int {
-    // Simulate some long-running task
-    time.Sleep(time.Second)
-    return item * 2
-}
-
-ForEachInPlaceWithContext(ctx, data, action)
-// If the context is canceled before the processing completes, the function returns early.
-```
+In this example, the `ForEach` function is used to double each element in the `data` slice concurrently. The resulting `data` slice will contain the doubled values after the `ForEach` function completes the processing.
 
 ### Timer
 
@@ -81,7 +77,7 @@ type Timer struct {
 This struct represents a timer that triggers a specified action function at regular intervals until stopped. The Timer uses goroutines and channels to provide concurrent execution.
 
 Usage Example:
-```go
+```golang
 func main() {
 ctx, cancel := context.WithCancel(context.Background())
 defer cancel()

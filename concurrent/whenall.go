@@ -1,6 +1,7 @@
 package concurrent
 
 import (
+	"context"
 	"fmt"
 	"sync"
 )
@@ -8,7 +9,7 @@ import (
 // WhenAll executes multiple tasks concurrently and waits for all of them to finish.
 // It returns an error if any of the tasks encounter an error. The returned error
 // contains information about the number of errors encountered during execution.
-func WhenAll(tasks []func() error) error {
+func WhenAll(ctx context.Context, tasks []func() error) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(tasks))
 
@@ -19,7 +20,11 @@ func WhenAll(tasks []func() error) error {
 			defer wg.Done()
 			err := t()
 			if err != nil {
-				errChan <- err // Send the error to the errChan if encountered.
+				select {
+				case errChan <- err: // Send the error to the errChan if encountered.
+				case <-ctx.Done(): // Check for context cancellation.
+					return // Exit the goroutine early if the context is canceled.
+				}
 			}
 		}(task)
 	}

@@ -11,74 +11,9 @@ type chSlice[T any] struct {
 	res T   // Stores the result of the action.
 }
 
-// ForEachReturn takes a slice of data and passes each entry to action. This creates a new slice
-// and returns it.
-func ForEachReturn[T any, K any](data []T, action func(T) K) []K {
-	var wg sync.WaitGroup
-	c := make(chan chSlice[K], len(data))
-	defer close(c)
-
-	// Launch goroutines to process each item in the data slice concurrently.
-	for i, item := range data {
-		wg.Add(1)
-
-		chs := chSlice[K]{
-			i: i,
-		}
-
-		go func(item T, c chan chSlice[K], chs chSlice[K]) {
-			defer wg.Done()
-			chs.res = action(item)
-			c <- chs
-		}(item, c, chs)
-	}
-
-	// Collect the results from the channel and create a new slice with the processed results.
-	result := make([]K, len(data))
-	for i := 0; i < len(data); i++ {
-		chs := <-c
-		result[chs.i] = chs.res
-	}
-
-	wg.Wait()
-
-	return result
-}
-
-// ForEachInPlace takes a slice of data and passes each entry to action. This does not create
-// a new slice. It updates data in place.
-func ForEachInPlace[T any](data []T, action func(T) T) {
-	var wg sync.WaitGroup
-	c := make(chan chSlice[T], len(data))
-	defer close(c)
-
-	// Launch goroutines to process each item in the data slice concurrently.
-	for i, item := range data {
-		wg.Add(1)
-
-		chs := chSlice[T]{
-			i: i,
-		}
-
-		go func(item T, c chan chSlice[T], chs chSlice[T]) {
-			defer wg.Done()
-			chs.res = action(item)
-			c <- chs
-		}(item, c, chs)
-	}
-
-	// Collect the results from the channel and update the data slice in place with the processed results.
-	for i := 0; i < len(data); i++ {
-		chs := <-c
-		data[chs.i] = chs.res
-	}
-
-	wg.Wait()
-}
-
-// ForEachInPlaceWithContext takes a slice of data, passes each entry to action, and updates data in place.
+// ForEach takes a slice of data, passes each entry to action, and updates data in place.
 // It respects the cancellation signal from the provided context.
-func ForEachInPlaceWithContext[T any](ctx context.Context, data []T, action func(context.Context, T) T) {
+func ForEach[T any](ctx context.Context, data []T, action func(context.Context, T) T) {
 	var wg sync.WaitGroup
 	c := make(chan chSlice[T], len(data))
 	defer close(c)

@@ -1,6 +1,7 @@
 package concurrent
 
 import (
+	"context"
 	"fmt"
 	"testing"
 )
@@ -21,7 +22,8 @@ func TestWhenAll(t *testing.T) {
 		},
 	}
 
-	err := WhenAll(tasks)
+	ctx := context.Background()
+	err := WhenAll(ctx, tasks)
 	if err != nil {
 		t.Errorf("Expected no errors, but got back %v", err)
 	}
